@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"sync"
 
 	"github.com/google/uuid"
 	maelstrom "github.com/jepsen-io/maelstrom/demo/go"
@@ -29,11 +30,14 @@ type TopologyRequest struct {
 }
 
 type Store struct {
+	mu       sync.RWMutex
 	messages map[int]struct{}
 	topology Topology
 }
 
 func (s *Store) WriteMessage(msg int) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if _, ok := s.messages[msg]; ok {
 		return false
 	}
@@ -42,6 +46,8 @@ func (s *Store) WriteMessage(msg int) bool {
 }
 
 func (s *Store) ReadMessages() []int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	var messages []int
 	for msg := range s.messages {
 		messages = append(messages, msg)
